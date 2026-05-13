@@ -27,7 +27,7 @@ body {
 .chatbot-chat-box {
   right: 30px !important;
   bottom: 110px !important;
-  width: 350px;
+  width: 450px;
   height: 470px;
   background-color: #fff;
   z-index: 1000;

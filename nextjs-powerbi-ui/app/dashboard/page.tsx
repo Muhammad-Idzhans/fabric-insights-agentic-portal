@@ -1,5 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import type { models as modelsType } from "powerbi-client";
+
+// powerbi-client-react references `self` which doesn't exist on the server
+const PowerBIEmbed = dynamic(
+    () => import("powerbi-client-react").then((mod) => mod.PowerBIEmbed),
+    { ssr: false }
+);
 import { useSession, signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import { Layout, Button, Typography, Avatar, Dropdown, theme, Spin } from "antd";
@@ -143,7 +151,7 @@ export default function DashboardPage() {
             <Header className="d-flex justify-content-between align-items-center px-4 border-bottom" style={{ background: colorBgContainer }} >
                 <div className="d-flex align-items-center gap-2">
                     <BarChartOutlined style={{ fontSize: 20, color: "#0078d4" }} />
-                    <Text strong style={{ fontSize: 16 }}>
+                    <Text className="fw-bold" style={{ fontSize: 16 }}>
                         Cashflow Dashboard
                     </Text>
                 </div>
@@ -162,7 +170,7 @@ export default function DashboardPage() {
             {/* Power BI Embed Area */}
             <Content className="p-3">
                 {/* Placeholder — will be replaced with <PowerBIEmbed /> later */}
-                <div
+                {/* <div
                     className="powerbi-container d-flex justify-content-center align-items-center rounded"
                     style={{ backgroundColor: "#fff", border: "2px dashed #d9d9d9" }}
                 >
@@ -175,6 +183,35 @@ export default function DashboardPage() {
                             Power BI Report will be embedded here
                         </Text>
                     </div>
+                </div> */}
+                {/* Power BI Embedded Report */}
+                <div className="">
+                    {session?.accessToken ? (
+                        <PowerBIEmbed
+                            embedConfig={{
+                                type: "report",
+                                id: process.env.NEXT_PUBLIC_POWERBI_REPORT_ID!,
+                                embedUrl: `https://app.powerbi.com/reportEmbed?reportId=${process.env.NEXT_PUBLIC_POWERBI_REPORT_ID}&groupId=${process.env.NEXT_PUBLIC_POWERBI_GROUP_ID}`,
+                                accessToken: session.accessToken,
+                                tokenType: 0,  // 0 = TokenType.Aad
+                                settings: {
+                                    panes: {
+                                        filters: { expanded: false, visible: false },
+                                        pageNavigation: { visible: false },
+                                    },
+                                    background: 1,  // 1 = BackgroundType.Transparent
+                                },
+                            }}
+                            cssClassName="powerbi-container"
+                        />
+                    ) : (
+                        <div
+                            className="powerbi-container d-flex justify-content-center align-items-center rounded"
+                            style={{ backgroundColor: "#fff", border: "2px dashed #d9d9d9" }}
+                        >
+                            <Spin size="large" />
+                        </div>
+                    )}
                 </div>
 
                 {/* Chatbot Chatting Area - Always rendered, animated via CSS */}
@@ -283,6 +320,12 @@ export default function DashboardPage() {
                                     placeholder="Type a message..."
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
+                                            e.preventDefault();
+                                            sendMessage();
+                                        }
+                                    }}
                                     disabled={isLoading}
                                     style={{ fontSize: '0.85rem' }}
                                 />
