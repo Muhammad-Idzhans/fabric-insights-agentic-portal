@@ -17,7 +17,7 @@ export async function POST(req: Request) {
         const agentName = process.env.AZURE_OPENAI_AGENT_ID || "cashflow-agent";
 
         // For Hartalega Agent
-        const agentVersion = "3";
+        const agentVersion = "5";
 
         // Create the AI Project client
         const projectClient = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
@@ -53,8 +53,20 @@ export async function POST(req: Request) {
             reply: response.output_text,
             conversationId: currentConversationId
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("Error communicating with Foundry Agent:", error);
-        return NextResponse.json({ error: "Failed to generate a response" }, { status: 500 });
+
+        const err = error as Error & { code?: string; status?: number; message?: string };
+        let userMessage = "Sorry, I'm unable to respond right now. Please try again later.";
+
+        if (err.code === "PermissionDenied" || err.status === 401) {
+            userMessage = "I don't have permission to access the data service. Please contact your administrator.";
+        } else if (err.code === "tool_user_error" || err.message?.includes("Create assistant failed")) {
+            userMessage = "I was unable to retrieve data from Fabric. The data connection may be temporarily unavailable. Please try again shortly.";
+        } else if (err.message?.includes("Failed to fetch") || err.message?.includes("ECONNREFUSED")) {
+            userMessage = "Unable to reach the AI service. Please check your network connection and try again.";
+        }
+
+        return NextResponse.json({ error: userMessage }, { status: 500 });
     }
 }

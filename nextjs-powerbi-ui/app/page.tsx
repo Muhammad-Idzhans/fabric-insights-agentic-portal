@@ -47,7 +47,7 @@ export default function LoginPage() {
               <BarChartOutlined className="text-white" style={{ fontSize: 54 }} />
             </div>
             <Title level={3} className="mb-1">
-              Cash Flow Dashboard
+              Insights Dashboard
             </Title>
             <Text type="secondary">
               Sign in to view your reports

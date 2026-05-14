@@ -85,10 +85,18 @@ export default function DashboardPage() {
             } else {
                 console.error("Agent returned an error:", data.error);
                 setIsLoading(false);
+                setMessages((prev) => [...prev, {
+                    role: "assistant",
+                    content: data.error || "Sorry, something went wrong. Please try again."
+                }]);
             }
         } catch (error) {
             console.error("Communication failed:", error);
             setIsLoading(false);
+            setMessages((prev) => [...prev, {
+                role: "assistant",
+                content: "Unable to reach the server. Please check your connection and try again."
+            }]);
         }
     };
 
@@ -152,7 +160,7 @@ export default function DashboardPage() {
                 <div className="d-flex align-items-center gap-2">
                     <BarChartOutlined style={{ fontSize: 20, color: "#0078d4" }} />
                     <Text className="fw-bold" style={{ fontSize: 16 }}>
-                        Cashflow Dashboard
+                        Insights Dashboard
                     </Text>
                 </div>
 
@@ -219,7 +227,7 @@ export default function DashboardPage() {
                     <div className={`position-fixed shadow rounded bottom-0 end-0 chatbot-chat-box ${isChatOpen ? 'chat-open' : 'chat-closed'}`}>
                         {/* Header */}
                         <div className="border-bottom p-2 bg-primary rounded-top d-flex justify-content-between align-items-center">
-                            <span className="fw-bold text-white">Cashflow Agent</span>
+                            <span className="fw-bold text-white">Insights Agent</span>
                             {messages.length > 0 && (
                                 <button
                                     onClick={clearChat}
