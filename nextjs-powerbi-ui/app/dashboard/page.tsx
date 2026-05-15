@@ -83,7 +83,7 @@ export default function DashboardPage() {
                     const available = fallbackPhrases.filter(p => p !== prev);
                     return available[Math.floor(Math.random() * available.length)];
                 });
-            }, 8000);
+            }, 10000);
 
             // Store interval ID for cleanup
             timeoutCleanup.current = interval;
@@ -100,6 +100,7 @@ export default function DashboardPage() {
     // Refs
     const messageEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
@@ -120,29 +121,37 @@ export default function DashboardPage() {
     const sendMessage = async () => {
         if (!input.trim() || isLoading) return;
 
-        const userMessage = { role: "user", content: input };
+        const currentInput = input;
+        const userMessage = { role: "user", content: currentInput };
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
         setIsLoading(true);
         setThinkingText("...");
+
+        abortControllerRef.current = new AbortController();
 
         // Fire off the 'think' request concurrently
         fetch("/api/chat/think", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: userMessage.content }),
+            signal: abortControllerRef.current.signal,
         })
             .then(res => res.json())
             .then(data => {
                 if (data.phrase) setThinkingText(data.phrase);
             })
-            .catch(err => console.error("Think error:", err));
+            .catch(err => {
+                if (err.name === 'AbortError') return;
+                console.error("Think error:", err);
+            });
 
         try {
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: userMessage.content, conversationId }),
+                signal: abortControllerRef.current.signal,
             });
 
             const data = await response.json();
@@ -158,16 +167,31 @@ export default function DashboardPage() {
                 setIsLoading(false);
                 setMessages((prev) => [...prev, {
                     role: "assistant",
-                    content: data.error || "Sorry, something went wrong. Please try again."
+                    content: data.error || "Sorry, I encountered an error.",
+                    isError: true
                 }]);
             }
-        } catch (error) {
-            console.error("Communication failed:", error);
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                setIsLoading(false);
+                setMessages((prev) => [...prev, { role: "assistant", content: "_You stopped this response._", isError: true }]);
+                setInput(currentInput);
+                return;
+            }
+            console.error("Chat error:", error);
             setIsLoading(false);
             setMessages((prev) => [...prev, {
                 role: "assistant",
-                content: "Unable to reach the server. Please check your connection and try again."
+                content: "Network error. Please try again.",
+                isError: true
             }]);
+        }
+    };
+
+    const stopResponse = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
         }
     };
 
@@ -444,12 +468,13 @@ export default function DashboardPage() {
                                     style={{ fontSize: '0.85rem' }}
                                 />
                                 <button
-                                    className="border-0 bg-white text-secondary fs-5"
-                                    onClick={sendMessage}
-                                    disabled={isLoading || !input.trim()}
+                                    className="border-0 bg-transparent text-secondary fs-5"
+                                    onClick={isLoading ? stopResponse : sendMessage}
+                                    disabled={!isLoading && !input.trim()}
+                                    title={isLoading ? "Stop generating" : "Send message"}
                                 >
                                     {isLoading ? (
-                                        <span className="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true" style={{ width: '14px', height: '14px' }}></span>
+                                        <i className="bi bi-stop-circle text-danger fs-5"></i>
                                     ) : (
                                         <SendOutlined />
                                     )}
