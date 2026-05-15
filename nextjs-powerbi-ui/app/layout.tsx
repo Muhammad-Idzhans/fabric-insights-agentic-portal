@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "[DEMO] PowerBI Cashflow",
-  description: "View Power BI reports based on your permissions with LLM AI.",
+  title: "Insights Dashboard",
+  description: "View Power BI reports based on your permissions with Generative AI to talk about your Internal Data.",
 };
 
 export default function RootLayout({

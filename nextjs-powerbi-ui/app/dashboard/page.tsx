@@ -36,6 +36,15 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [thinkingText, setThinkingText] = useState("...");
     const [conversationId, setConversationId] = useState<string | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Detect mobile screen for Power BI layout
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        handleResize(); // Initial check
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Pool of rotating thinking phrases shown while waiting for the agent
     const fallbackPhrases = [
@@ -275,6 +284,7 @@ export default function DashboardPage() {
                                         pageNavigation: { visible: false },
                                     },
                                     background: 1,  // 1 = BackgroundType.Transparent
+                                    layoutType: isMobile ? 2 : 0, // 2 = MobilePortrait, 0 = Master
                                 },
                             }}
                             cssClassName="powerbi-container"
