@@ -312,13 +312,27 @@ export default function DashboardPage() {
                                         <i className="bi bi-trash"></i>
                                     </button>
                                 )}
+                                {/* Desktop Maximize/Minimize Button */}
                                 <button
                                     onClick={toggleMaximize}
-                                    className="btn btn-sm text-white border-0 p-0 px-1"
+                                    className="btn btn-sm text-white border-0 p-0 px-1 d-none d-md-block"
                                     title={isChatMaximized ? "Minimize" : "Maximize"}
                                     style={{ fontSize: '0.75rem', opacity: 0.8 }}
                                 >
                                     <i className={`bi ${isChatMaximized ? 'bi-fullscreen-exit' : 'bi-arrows-fullscreen'}`}></i>
+                                </button>
+                                {/* Mobile Close Button */}
+                                <button
+                                    onClick={() => {
+                                        setIsChatOpen(false);
+                                        // Reset maximized state for next time
+                                        setTimeout(() => setIsChatMaximized(false), 300);
+                                    }}
+                                    className="btn btn-sm text-white border-0 p-0 px-1 d-md-none"
+                                    title="Close"
+                                    style={{ fontSize: '1rem', opacity: 0.8 }}
+                                >
+                                    <i className="bi bi-x-lg"></i>
                                 </button>
                             </div>
                         </div>
