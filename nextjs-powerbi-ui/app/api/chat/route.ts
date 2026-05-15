@@ -17,7 +17,7 @@ export async function POST(req: Request) {
         const agentName = process.env.AZURE_OPENAI_AGENT_ID || "cashflow-agent";
 
         // For Hartalega Agent
-        const agentVersion = "9";
+        const agentVersion = "10";
 
         // Create the AI Project client
         const projectClient = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
