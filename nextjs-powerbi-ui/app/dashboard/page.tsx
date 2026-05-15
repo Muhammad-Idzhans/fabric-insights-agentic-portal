@@ -36,6 +36,57 @@ export default function DashboardPage() {
     const [thinkingText, setThinkingText] = useState("...");
     const [conversationId, setConversationId] = useState<string | null>(null);
 
+    // Pool of rotating thinking phrases shown while waiting for the agent
+    const fallbackPhrases = [
+        "Working on it...",
+        "Gathering information...",
+        "Processing your request...",
+        "Searching for answers...",
+        "Putting it together...",
+        "Almost there...",
+        "Still working on it...",
+    ];
+
+    // Track whether fallback rotation has already been started
+    const rotationStarted = useRef(false);
+
+    // Rotate thinking phrases — wait 10s after the LLM phrase, then rotate every 10s
+    useEffect(() => {
+        if (!isLoading) {
+            rotationStarted.current = false; // Reset for next message
+            return;
+        }
+        if (thinkingText === "..." || rotationStarted.current) return;
+
+        rotationStarted.current = true;
+
+        const timeout = setTimeout(() => {
+            // After 10s, show the first fallback phrase immediately
+            setThinkingText(prev => {
+                const available = fallbackPhrases.filter(p => p !== prev);
+                return available[Math.floor(Math.random() * available.length)];
+            });
+
+            // Then rotate every 10s after that
+            const interval = setInterval(() => {
+                setThinkingText(prev => {
+                    const available = fallbackPhrases.filter(p => p !== prev);
+                    return available[Math.floor(Math.random() * available.length)];
+                });
+            }, 8000);
+
+            // Store interval ID for cleanup
+            timeoutCleanup.current = interval;
+        }, 10000);
+
+        const timeoutCleanup = { current: null as NodeJS.Timeout | null };
+
+        return () => {
+            clearTimeout(timeout);
+            if (timeoutCleanup.current) clearInterval(timeoutCleanup.current);
+        };
+    }, [isLoading, thinkingText]);
+
     // Refs
     const messageEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
