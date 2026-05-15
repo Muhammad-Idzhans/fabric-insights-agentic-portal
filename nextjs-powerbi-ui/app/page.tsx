@@ -33,7 +33,7 @@ export default function LoginPage() {
   return (
 
     <div
-      className="d-flex justify-content-center align-items-center"
+      className="d-flex justify-content-center align-items-center p-4"
       style={{ minHeight: "100vh", backgroundColor: "#f0f2f5" }}
     >
       <Card

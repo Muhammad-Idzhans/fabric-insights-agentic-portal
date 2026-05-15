@@ -28,6 +28,7 @@ const { Text } = Typography;
 export default function DashboardPage() {
     // Chat box visibility
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [isChatMaximized, setIsChatMaximized] = useState(false);
 
     // Chat state
     const [messages, setMessages] = useState<{ role: string, content: string }[]>([]);
@@ -96,6 +97,16 @@ export default function DashboardPage() {
         messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    // Lock body scroll when chat is maximized
+    useEffect(() => {
+        if (isChatMaximized) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [isChatMaximized]);
+
     // Send message to the agent
     const sendMessage = async () => {
         if (!input.trim() || isLoading) return;
@@ -156,6 +167,11 @@ export default function DashboardPage() {
         setMessages([]);
         setConversationId(null);
         setThinkingText("...");
+    };
+
+    // Toggle maximize/minimize
+    const toggleMaximize = () => {
+        setIsChatMaximized(prev => !prev);
     };
 
     const {
@@ -273,23 +289,38 @@ export default function DashboardPage() {
                     )}
                 </div>
 
+                {/* Backdrop overlay when maximized */}
+                {isChatMaximized && isChatOpen && (
+                    <div className="chat-backdrop" onClick={toggleMaximize} />
+                )}
+
                 {/* Chatbot Chatting Area - Always rendered, animated via CSS */}
                 <div>
-                    <div className={`position-fixed shadow rounded bottom-0 end-0 chatbot-chat-box ${isChatOpen ? 'chat-open' : 'chat-closed'}`}>
+                    <div className={`position-fixed shadow rounded bottom-0 end-0 chatbot-chat-box ${isChatOpen ? 'chat-open' : 'chat-closed'} ${isChatMaximized ? 'chat-maximized' : ''}`}>
                         {/* Header */}
-                        <div className="border-bottom p-2 bg-primary rounded-top d-flex justify-content-between align-items-center">
+                        <div className={`border-bottom p-2 bg-primary d-flex justify-content-between align-items-center ${isChatMaximized ? '' : 'rounded-top'}`}>
                             <span className="fw-bold text-white">Insights Agent</span>
-                            {messages.length > 0 && (
+                            <div className="d-flex align-items-center gap-2">
+                                {messages.length > 0 && (
+                                    <button
+                                        onClick={clearChat}
+                                        disabled={isLoading}
+                                        className="btn btn-sm text-white border-0 p-0 px-1"
+                                        title="Clear Chat"
+                                        style={{ fontSize: '0.75rem', opacity: 0.8 }}
+                                    >
+                                        <i className="bi bi-trash"></i>
+                                    </button>
+                                )}
                                 <button
-                                    onClick={clearChat}
-                                    disabled={isLoading}
+                                    onClick={toggleMaximize}
                                     className="btn btn-sm text-white border-0 p-0 px-1"
-                                    title="Clear Chat"
+                                    title={isChatMaximized ? "Minimize" : "Maximize"}
                                     style={{ fontSize: '0.75rem', opacity: 0.8 }}
                                 >
-                                    <i className="bi bi-trash"></i>
+                                    <i className={`bi ${isChatMaximized ? 'bi-fullscreen-exit' : 'bi-arrows-fullscreen'}`}></i>
                                 </button>
-                            )}
+                            </div>
                         </div>
 
                         {/* Messages */}
@@ -418,7 +449,14 @@ export default function DashboardPage() {
                                 </span>
                             </span>
                         }
-                        onClick={() => setIsChatOpen(!isChatOpen)}
+                        onClick={() => {
+                            const opening = !isChatOpen;
+                            setIsChatOpen(opening);
+                            // Auto-maximize on mobile devices when opening
+                            if (opening && window.innerWidth <= 768) {
+                                setIsChatMaximized(true);
+                            }
+                        }}
                     />
                 </div>
 
