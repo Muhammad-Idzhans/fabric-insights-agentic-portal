@@ -9,7 +9,7 @@ const PowerBIEmbed = dynamic(
     { ssr: false }
 );
 import { useSession, signOut } from "next-auth/react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Layout, Button, Typography, Avatar, Dropdown, theme, Spin } from "antd";
 import {
     UserOutlined,
@@ -37,6 +37,10 @@ export default function DashboardPage() {
     const [thinkingText, setThinkingText] = useState("...");
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(false);
+
+    // Power BI report instance ref for token hot-swap
+    const reportRef = useRef<any>(null);
+    const prevTokenRef = useRef<string | undefined>(undefined);
 
     // Detect mobile screen for Power BI layout
     useEffect(() => {
@@ -211,7 +215,45 @@ export default function DashboardPage() {
         token: { colorBgContainer },
     } = theme.useToken();
 
-    const { data: session, status } = useSession();
+    // useSession — the `update` function triggers a server-side session refresh
+    // which runs the JWT callback and auto-refreshes the Azure AD token if needed
+    const { data: session, status, update: updateSession } = useSession();
+
+    // Capture the Power BI report instance when it first renders
+    const getEmbeddedComponent = useCallback((embeddedReport: any) => {
+        reportRef.current = embeddedReport;
+    }, []);
+
+    // Refresh the session every 45 minutes so the server-side JWT callback
+    // can auto-refresh the Azure AD access token before it expires (~1hr)
+    useEffect(() => {
+        const REFRESH_INTERVAL = 45 * 60 * 1000; // 45 minutes in ms
+        const interval = setInterval(() => {
+            updateSession(); // triggers JWT callback server-side
+        }, REFRESH_INTERVAL);
+        return () => clearInterval(interval);
+    }, [updateSession]);
+
+    // Hot-swap the access token on the live Power BI embed when it changes
+    useEffect(() => {
+        const newToken = session?.accessToken;
+        if (!newToken) return;
+
+        // On first render, just record the token
+        if (prevTokenRef.current === undefined) {
+            prevTokenRef.current = newToken;
+            return;
+        }
+
+        // If the token actually changed, update the live report
+        if (newToken !== prevTokenRef.current) {
+            prevTokenRef.current = newToken;
+            if (reportRef.current) {
+                reportRef.current.setAccessToken(newToken)
+                    .catch((err: any) => console.error("Failed to update Power BI token:", err));
+            }
+        }
+    }, [session?.accessToken]);
 
     // Show spinner while session loads
     if (status === "loading") {
@@ -311,6 +353,7 @@ export default function DashboardPage() {
                                     layoutType: isMobile ? 2 : 0, // 2 = MobilePortrait, 0 = Master
                                 },
                             }}
+                            getEmbeddedComponent={getEmbeddedComponent}
                             cssClassName="powerbi-container"
                         />
                     ) : (
