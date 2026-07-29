@@ -2,6 +2,32 @@ import { NextResponse } from "next/server";
 import { DefaultAzureCredential } from "@azure/identity";
 import { AIProjectClient } from "@azure/ai-projects";
 
+
+// Downloads a Code Interpreter-generated file and returns it as a base64 data URL
+async function downloadImageAsDataUrl(
+    client: any,
+    containerId: string | undefined,
+    fileId: string
+): Promise<string | null> {
+    try {
+        let res: any;
+        if (containerId) {
+            // Code Interpreter files live inside a container
+            // NOTE: signature is retrieve(fileId, { container_id }) — NOT (containerId, fileId)
+            res = await client.containers.files.content.retrieve(fileId, { container_id: containerId });
+        } else {
+            // Fallback: plain files endpoint
+            res = await client.files.content(fileId);
+        }
+        const arrayBuffer = await res.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        return `data:image/png;base64,${base64}`;
+    } catch (e) {
+        console.error("Image download failed:", e);
+        return null;
+    }
+}
+
 export async function POST(req: Request) {
     try {
         // 1. Receive the message from the frontend (e.g. "Hello")
@@ -14,10 +40,10 @@ export async function POST(req: Request) {
         // 2. Set up the AI Foundry Project connection
         // We try to pull these from your .env.local if they exist, otherwise we use your fallback strings
         const projectEndpoint = process.env.FOUNDRY_PROJECT_ENDPOINT || "https://demo-cashflow-foundry.services.ai.azure.com/api/projects/demo-cashflow-foundryProject";
-        const agentName = process.env.AZURE_OPENAI_AGENT_ID || "cashflow-agent";
 
-        // For Hartalega Agent
-        const agentVersion = "10";
+        // Read "name:version" from env (e.g. "education-insights-agent:4")
+        const agentRef = process.env.AZURE_OPENAI_AGENT_ID || "education-insights-agent:4";
+        const [agentName, agentVersion = "4"] = agentRef.split(":");
 
         // Create the AI Project client
         const projectClient = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
@@ -48,9 +74,62 @@ export async function POST(req: Request) {
                 body: { agent_reference: { name: agentName, version: agentVersion, type: "agent_reference" } },
             },
         );
+
+        // 🔍 DEBUG: inspect the output shape so we can confirm where images live.
+        // Remove this once inline images are confirmed working.
+        console.log("RESPONSE OUTPUT:", JSON.stringify((response as any).output, null, 2));
+
+        // Extract any charts/images produced by the Code Interpreter
+        const images: string[] = [];
+        try {
+            const outputItems = (response as any).output ?? [];
+            for (const item of outputItems) {
+                if (item.type !== "message") continue;
+                const contentParts = item.content ?? [];
+                for (const part of contentParts) {
+                    // Case A: a direct image content part
+                    if (part.type === "output_image" || part.type === "image_file") {
+                        const fileId = part.image_file?.file_id ?? part.file_id;
+                        const containerId = part.container_id;
+                        if (fileId) {
+                            const url = await downloadImageAsDataUrl(openAIClient, containerId, fileId);
+                            if (url) images.push(url);
+                        }
+                    }
+                    // Case B: a file annotation on a text part (container file citation)
+                    const annotations = part.annotations ?? [];
+                    for (const ann of annotations) {
+                        if (
+                            ann.type === "container_file_citation" ||
+                            ann.type === "file_path" ||
+                            ann.type === "file_citation"
+                        ) {
+                            const fileId = ann.file_id;
+                            const containerId = ann.container_id;
+                            if (fileId) {
+                                const url = await downloadImageAsDataUrl(openAIClient, containerId, fileId);
+                                if (url) images.push(url);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to extract images:", e);
+        }
+
         // 4. Return the Agent's answer AND the Thread ID back to your frontend
+        // Remove the broken "Download the chart" markdown links pointing to sandbox/mnt
+        // (these caused the redirect-to-/dashboard issue — we render the image inline instead)
+        const cleanedReply = (response.output_text || "")
+            .replace(/\[[^\]]*\]\((sandbox:)?\/mnt\/data\/[^)]*\)/g, "")
+            .replace(/\[Download[^\]]*\]\([^)]*\)/gi, "")
+            .trim();
+
+        // 4. Return the Agent's answer, images, AND the Thread ID back to your frontend
         return NextResponse.json({
-            reply: response.output_text,
+            reply: cleanedReply,
+            images,
             conversationId: currentConversationId
         });
     } catch (error: unknown) {

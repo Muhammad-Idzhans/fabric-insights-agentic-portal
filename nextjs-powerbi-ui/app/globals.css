@@ -2,6 +2,14 @@
 @import "bootstrap/dist/css/bootstrap.min.css";
 @import "bootstrap-icons/font/bootstrap-icons.css";
 
+:root {
+  --bg-base: #0B1220;
+  --bg-surface: #141C2E;
+  --accent-blue: #3B82F6;
+  --text-primary: #E6EAF2;
+  --text-muted: #93A0B5;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+}
 
 /* Override any Bootstrap vs AntD conflicts */
 *,
@@ -12,16 +20,48 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f0f2f5;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+/* Theme Utilities */
+.bg-base {
+  background-color: var(--bg-base) !important;
+}
+
+.bg-surface {
+  background-color: var(--bg-surface) !important;
+}
+
+.text-primary {
+  color: var(--text-primary) !important;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.border-subtle {
+  border-color: var(--border-subtle) !important;
 }
 
 /* Power BI embed container */
 .powerbi-container {
   width: 100%;
-  height: calc(100vh - 100px);
-  /* full height minus header */
+  height: 100%;
   border: none;
+  display: block;
+  background-color: transparent;
+}
+
+.powerbi-container iframe {
+  display: block;
+}
+
+/* Smooth sidebar collapse transition */
+.ant-layout-sider {
+  transition: all 0.2s ease !important;
 }
 
 .chatbot-chat-box {
@@ -240,4 +280,106 @@ body {
     right: 20px !important;
     bottom: 90px !important;
   }
+}
+
+/* ==================== FOCUS RESETS ==================== */
+.chatbot-chat-box input:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.chatbot-chat-box button:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+
+
+/* ===== Phase 1: Content dim overlay when chat is open ===== */
+.content-dim-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0);
+  transition: background-color 0.35s ease;
+  pointer-events: none;
+  /* purely visual for Phase 1 — Power BI stays interactive */
+  z-index: 5;
+}
+
+.content-dim-overlay.dim-active {
+  background-color: rgba(0, 0, 0, 0.60);
+  pointer-events: auto
+}
+
+/* ===== Image Preview Lightbox ===== */
+.image-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lightboxFadeIn 0.25s ease forwards;
+}
+
+@keyframes lightboxFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.image-preview-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.image-preview-close {
+  position: absolute;
+  top: -40px;
+  right: -8px;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.image-preview-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.image-preview-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 20px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.image-preview-download:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
 }

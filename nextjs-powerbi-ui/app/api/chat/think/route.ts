@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
         const { message } = body;
-        
+
         if (!message) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
         }
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
                     content: message
                 }
             ],
-            max_tokens: 15,
+            max_completion_tokens: 15,
             temperature: 0.7,
         });
 
